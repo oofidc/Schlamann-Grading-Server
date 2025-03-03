@@ -10,20 +10,18 @@ import java.io.*;
 import java.util.*; 
 import io.javalin.Javalin;
 import io.javalin.http.UploadedFile;
+import io.javalin.http.Context;
 
 import java.nio.file.StandardCopyOption;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import com.google.gson.Gson;
 
 public class App {
-    public String getGreeting() {
-        return "Hello World!";
-    }
 
-
-    public static String compileAndRun(String dir){
+    public static String compileAndRun(String dir) {
         String crCommand = "java " + dir;
-        try{
+        try {
             Process compileAndRun = Runtime.getRuntime().exec(crCommand);
             BufferedReader reader = new BufferedReader(new InputStreamReader(compileAndRun.getInputStream()));
             String outputString = "";
@@ -34,67 +32,100 @@ public class App {
             }
             compileAndRun.destroy();
             return outputString;
-        }
-        catch(IOException e){
+        } catch (IOException e) {
             System.out.println("ERROR DURING COMPILATION & RUNNING PROCESS");
             return "ERROR";
         }
-    
+
     }
+    //Returns 1 if successful, returning 0 if unsuccesful
+    public static int destroyListedFiles(){
+        return 1;
+    }
+
+    // Returns 1 if successful, returning 0 if unsuccesful
+    public static int saveAttachedFile(Context ctx){
+        String fileContents = "";
+        for(UploadedFile file: ctx.uploadedFiles()){
+            //System.out.println("CONTENTS OF " + file.filename()); //DEBUG LINE
+
+            //Read through File in Request
+            InputStream stream = file.content();
+            Scanner scanner = new Scanner(stream).useDelimiter("\\A");
+            fileContents = "";
+            while(scanner.hasNextLine()){
+                fileContents += "\n" + scanner.nextLine();
+            }
+            try {
+                File javaFile = new File(file.filename());
+                if (javaFile.createNewFile()) {
+                  System.out.println("File created: " + javaFile.getName());
+                  javaFile.setWritable(true);
+                  if(javaFile.canWrite()){
+                    try (InputStream inputStream = file.content()) {
+                        Files.copy(inputStream, javaFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        System.out.println("Content written to file: " + javaFile.getName());   
+                    }
+                    catch(Exception e){
+                        System.out.println("Generic Error Writing to Text File");
+                        return 0;
+                    }
+
+                  }
+                }
+                
+            }
+            catch(IOException e)
+            {
+                System.out.println("ERROR OCCURED IN WRITING/CREATING NEW FILE:");
+                e.printStackTrace();
+                return 0;
+            }
+            catch(Exception e){
+                System.out.println("ERROR OCCURED IN WRITING/CREATING NEW FILE(NON IOEXCEPTION ERROR):");
+                e.printStackTrace();
+                return 0;
+            }
+
+           
+        }
+        return 1;
+    }
+    
 
     public static void main(String[] args) {
         var app = Javalin.create(/*config*/)
             .get("/", ctx -> ctx.result("Hello World"))
             .post("/post_test/", ctx -> {
-                String fileContents = "";
-                List<String> filenames = new ArrayList<>();
+                //Initialize variables for process
+                String output = "";
+                Map<String,Object> outputDict = new HashMap<>();
+                List<String> filenames = new ArrayList<>(); //Not Really Doing Much Right Now
+                UploadedFile indexFile = ctx.uploadedFiles().get(0);
+
+                //Test Response for Debugging in Terminal
+                saveAttachedFile(ctx);
                 String Response = "\n FILE(S) RECEIVED - CONTENTS DISPLAYED BELOW";
-                for(UploadedFile file: ctx.uploadedFiles()){
-                    filenames.add(file.filename());
+
+                //Loop through each uploaded file, reading it and writing it to the 
+               
+                    //System.out.println(fileContents); //DEBUG LINE
+                    /*output = compileAndRun(file.filename());
+                        outputDict.put("result",output);
+                        System.out.println("RUNNING OUTCOME: " + compileAndRun(file.filename()));
+                        javaFile.delete(); */
+                          
+                        
                     
-                    System.out.println("CONTENTS OF " + file.filename());
-                    InputStream stream = file.content();
-                    Scanner scanner = new Scanner(stream).useDelimiter("\\A");
-                    fileContents = "";
-                    while(scanner.hasNextLine()){
-                        fileContents += "\n" + scanner.nextLine();
-                        //System.out.println(scanner.nextLine());
-                    }
-                    System.out.println(fileContents);
-                    try {
-                        File javaFile = new File(file.filename());
-                        if (javaFile.createNewFile()) {
-                          System.out.println("File created: " + javaFile.getName());
-                          javaFile.setWritable(true);
-                          if(javaFile.canWrite()){
-                            try (InputStream inputStream = file.content()) {
-                                Files.copy(inputStream, javaFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                                System.out.println("Content written to file: " + javaFile.getName());
-                                System.out.println("RUNNING OUTCOME: " + compileAndRun(file.filename()));
-                                javaFile.delete();   
-                            }
-                            catch(Exception e){
-                                System.out.println("ERROR WRITING IN FILE");
-                            }
-    
-                          }
-                        }
-                    }
-                    catch(IOException e)
-                    {
-                        System.out.println("ERROR OCCURED IN WRITING/CREATING NEW FILE:");
-                        e.printStackTrace();
-                    }
-                    catch(Exception e){
-                        System.out.println("ERROR OCCURED IN WRITING/CREATING NEW FILE(NON IOEXCEPTION ERROR):");
-                        e.printStackTrace();
-                    }
                    
-                }
-                ctx.result("Uploaded files: " + String.join(", ", filenames));
+                
+                Gson gson = new Gson();
+                ctx.result(gson.toJson(outputDict));
+                
                 //TEST COMMAND: curl -X POST -F "file1=@.\Schlamann-Grading-Server\Test1.java" -F "file2=@.\Schlamann-Grading-Server\Test2.java" -F "file3=@.\Schlamann-Grading-Server\Test3.java" http://localhost:7070/post_test/
+                // curl -X POST -F "file1=@.\Schlamann-Grading-Server\Test1.java" http://localhost:7070/post_test/
             })
             .start(7070);
-        System.out.println(new App().getGreeting());
+        System.out.println(new App());
     }
 }

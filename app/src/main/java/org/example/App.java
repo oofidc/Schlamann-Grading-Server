@@ -39,7 +39,18 @@ public class App {
 
     }
     //Returns 1 if successful, returning 0 if unsuccesful
-    public static int destroyListedFiles(){
+    public static int destroyListedFiles(List<String> filenames){
+
+        for(String filename: filenames){
+            File file = new File(filename);
+            try{
+                file.delete();
+            }
+            catch(Exception e){
+                System.out.println("Errors Deleting Files");
+                return 0;
+            }
+        }
         return 1;
     }
 

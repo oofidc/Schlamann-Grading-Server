@@ -102,20 +102,63 @@ public class App {
         }
         return 1;
     }
+
+    public static int saveFileFromJson(Context ctx){
+        try{
+        System.out.println("\n\n\n BODY OF REQUEST: " + ctx.body());
+        return 1;
+        }
+        catch(Exception e){
+            e.printStackTrace();
+            return 0;
+        }
+    }
     
 
     public static void main(String[] args) {
+        Gson gson = new Gson();
         var app = Javalin.create(/*config*/)
             .get("/", ctx -> ctx.result("Hello World"))
             .post("/post_test/", ctx -> {
                 //Initialize variables for process
                 String output = "";
+                UploadedFile indexFile;  
                 Map<String,Object> outputDict = new HashMap<>();
                 List<String> filenames = new ArrayList<>(); //Not Really Doing Much Right Now
-                UploadedFile indexFile = ctx.uploadedFiles().get(0);
+                
 
+                /*for(UploadedFile file: ctx.uploadedFiles()){
+                    filenames.add(file.filename());
+                }*/
+               
+
+                System.out.println("POST REQUEST RECEIVED");
+                Map<String, Object> inputDict = new HashMap<>();
+                boolean jsonAttached = ctx.body().contains("json");
+                if(jsonAttached){
+                    inputDict.put();
+                    inputDict = gson.fromJson(ctx.body(), Map.class);
+                    System.out.println(inputDict);
+                }
+
+                
                 //Test Response for Debugging in Terminal
-                saveAttachedFile(ctx);
+                if(!jsonAttached){
+                    indexFile = ctx.uploadedFiles().get(0);
+                    saveAttachedFile(ctx);
+                    
+                }
+                else{
+                    //indexFile = "blank.request";
+                    saveFileFromJson(ctx);
+                    return;
+                }
+
+                
+            
+                outputDict.put("output",compileAndRun(indexFile.filename()));
+                destroyListedFiles(filenames);
+                
                 String Response = "\n FILE(S) RECEIVED - CONTENTS DISPLAYED BELOW";
 
                 //Loop through each uploaded file, reading it and writing it to the 
@@ -127,14 +170,12 @@ public class App {
                         javaFile.delete(); */
                           
                         
-                    
-                   
+
                 
-                Gson gson = new Gson();
-                ctx.result(gson.toJson(outputDict));
                 
-                //TEST COMMAND: curl -X POST -F "file1=@.\Schlamann-Grading-Server\Test1.java" -F "file2=@.\Schlamann-Grading-Server\Test2.java" -F "file3=@.\Schlamann-Grading-Server\Test3.java" http://localhost:7070/post_test/
-                // curl -X POST -F "file1=@.\Schlamann-Grading-Server\Test1.java" http://localhost:7070/post_test/
+                ctx.result(gson.toJson(outputDict));                
+                //TEST COMMAND: curl -X POST -F "file1=@.\Test1.java" -F "file2=@.\Test2.java" -F "file3=@.\Test3.java" http://localhost:7070/post_test/
+                // curl -X POST -F "file1=@.\Test1.java" http://localhost:7070/post_test/
             })
             .start(7070);
         System.out.println(new App());

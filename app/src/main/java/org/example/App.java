@@ -3,18 +3,19 @@
  */
 
 //TO-DO:
- /*
-  * - Clean Up & Organize Code More Into crRequest Class
-  * - Finish Json Uploading method
-  * - Make a seperate method designed to run the headFile
-  * - Make a seperate method designed to delete extra files
-  * - Make them both upload into the 
-  */
+/*
+ * - Clean Up & Organize Code More Into crRequest Class
+ * - Finish Json Uploading method
+ * - Make a seperate method designed to run the headFile
+ * - Make a seperate method designed to delete extra files
+ * - Make them both upload into the 
+ * - Remove Print Statements and turn to actual error catching
+ */
 package org.example;
 
 //JUST GET ALL THE IO STUFF
 import java.io.*;
-import java.util.*; 
+import java.util.*;
 import io.javalin.Javalin;
 import io.javalin.http.UploadedFile;
 import io.javalin.http.Context;
@@ -23,144 +24,103 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import com.google.gson.Gson;
-Gson gson = new Gson();
-public class App {
-    public static void main(String[] args) {
-        var app = Javalin.create(/*config*/)
-            .get("/", ctx -> ctx.result("Hello World"))
-            .post("/post_test/", ctx -> {
-                //Initialize variables for process
-                String output = "";
-                UploadedFile indexFile;  
-                Map<String,Object> outputDict = new HashMap<>();
-                List<String> filenames = new ArrayList<>(); //Not Really Doing Much Right Now
-                
-
-                /*for(UploadedFile file: ctx.uploadedFiles()){
-                    filenames.add(file.filename());
-                }*/
-               
-
-                System.out.println("POST REQUEST RECEIVED");
-                
-
-                
-                //Test Response for Debugging in Terminal
-                boolean jsonAttached = ctx.body().contains("json");
-                if(!jsonAttached){
-                    indexFile = ctx.uploadedFiles().get(0);
-                    saveAttachedFile(ctx); 
-                }
-                else{
-                    //indexFile = "blank.request";
-                    saveFileFromJson(ctx);
-                    return;
-                }
-
-                
-            
-                outputDict.put("output",compileAndRun(indexFile.filename()));
-                destroyListedFiles(filenames);
-                
-                String Response = "\n FILE(S) RECEIVED - CONTENTS DISPLAYED BELOW";
-
-                //Loop through each uploaded file, reading it and writing it to the 
-               
-                    //System.out.println(fileContents); //DEBUG LINE
-                    /*output = compileAndRun(file.filename());
-                        outputDict.put("result",output);
-                        System.out.println("RUNNING OUTCOME: " + compileAndRun(file.filename()));
-                        javaFile.delete(); */
-                          
-                        
-
-                
-                
-                ctx.result(gson.toJson(outputDict));                
-                //TEST COMMAND: curl -X POST -F "file1=@.\Test1.java" -F "file2=@.\Test2.java" -F "file3=@.\Test3.java" http://localhost:7070/post_test/
-                // curl -X POST -F "file1=@.\Test1.java" http://localhost:7070/post_test/
-            })
-            .start(7070);
-        System.out.println(new App());
-    }
-}
 
 
-class crRequest{
-    Gson gson;
-    Context ctx;
+class crRequest {
 
-    crRequest(Context ctx){
+    static private Gson gson;
+    private Context ctx;
+    //private UploadedFile indexFile;
+    private String indexFilename; // Set to the first file indexed if its an uploaded file and the specified main file if given in a json
+    private List<File> files;
+
+    crRequest(Context ctx) {
+        gson=new Gson();
         this.ctx = ctx;
+        if(ctx.body().contains("json")){
+            saveFileFromJson(ctx);
+        }
+        else{
+            System.out.println("DEBUG -- I HAVE BEGUN SAVING THE ATTACHED FILE"); //DEBUG PRINT
+            saveAttachedFile();
+        }
     }
 
-       // Returns 1 if successful, returning 0 if unsuccesful
-       public static int saveAttachedFile(Context ctx){
-        String fileContents = "";
-        for(UploadedFile file: ctx.uploadedFiles()){
-            //System.out.println("CONTENTS OF " + file.filename()); //DEBUG LINE
+      /*
+                     * output = compileAndRun(file.filename());
+                     * outputDict.put("result",output);
+                     * System.out.println("RUNNING OUTCOME: " + compileAndRun(file.filename()));
+                     * javaFile.delete();
+                     */
 
-            //Read through File in Request
+    public String getIndexFilename(){
+        return indexFilename;
+    }
+    // Returns 1 if successful, returning 0 if unsuccesful
+    public int saveAttachedFile() {
+        String fileContents = "";
+        //System.out.println("DEBUG -- OPEN METHOED " + ctx.uploadedFiles().size());
+        indexFilename = ctx.uploadedFiles().get(0).filename();
+        for (UploadedFile file : ctx.uploadedFiles()) {
+            System.out.println("CONTENTS OF " + file.filename()); //DEBUG LINE
+
+            // Read through file & save contents to fileContents
             InputStream stream = file.content();
             Scanner scanner = new Scanner(stream).useDelimiter("\\A");
             fileContents = "";
-            while(scanner.hasNextLine()){
+            while (scanner.hasNextLine()) {
                 fileContents += "\n" + scanner.nextLine();
             }
+            //Creates javaFile w/ same name as uploadedFile and
             try {
                 File javaFile = new File(file.filename());
-                if (javaFile.createNewFile()) {
-                  System.out.println("File created: " + javaFile.getName());
-                  javaFile.setWritable(true);
-                  if(javaFile.canWrite()){
-                    try (InputStream inputStream = file.content()) {
-                        Files.copy(inputStream, javaFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                        System.out.println("Content written to file: " + javaFile.getName());   
-                    }
-                    catch(Exception e){
-                        System.out.println("Generic Error Writing to Text File");
-                        return 0;
-                    }
-
-                  }
+                if (javaFile.createNewFile()) 
+                {//Creates new File and only runs rest of code if the file was succesfully created
+                    System.out.println("File created: " + javaFile.getName());
+                    javaFile.setWritable(true);
+                    //if (javaFile.canWrite()) { //Check to make sure javaFile is writable(for the most part unnecesary)
+                        try (InputStream inputStream = file.content()) { // Copies code to inputStream
+                            Files.copy(inputStream, javaFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                            System.out.println("Content written to file: " + javaFile.getName());
+                        }
+                        catch (Exception e) {
+                            System.out.println("Generic Error Writing to Text File");
+                            return 0;
+                        }
+                    //}
                 }
-                
             }
-            catch(IOException e)
-            {
+            //Catch possible errors 
+            catch (IOException e) {
                 System.out.println("ERROR OCCURED IN WRITING/CREATING NEW FILE:");
                 e.printStackTrace();
                 return 0;
-            }
-            catch(Exception e){
+            } catch (Exception e) {
                 System.out.println("ERROR OCCURED IN WRITING/CREATING NEW FILE(NON IOEXCEPTION ERROR):");
                 e.printStackTrace();
                 return 0;
             }
 
-           
         }
         return 1;
     }
 
+    public static int saveFileFromJson(Context ctx) {
+        try {
+            // System.out.println("\n\n\n BODY OF REQUEST: " + ctx.body()); //DEBUG PRINT
+            Map<String, Object> inputDict = new HashMap<>();
 
-    public static int saveFileFromJson(Context ctx){
-        try{
-        //System.out.println("\n\n\n BODY OF REQUEST: " + ctx.body()); //DEBUG PRINT
-        Map<String, Object> inputDict = new HashMap<>();
-                
-               
-                    //inputDict.put();
-                    inputDict = gson.fromJson(ctx.body(), Map.class);
-                    System.out.println(inputDict);
-                
-        return 1;
-        }
-        catch(Exception e){
+            // inputDict.put();
+            inputDict = gson.fromJson(ctx.body(), Map.class);
+            System.out.println(inputDict);
+
+            return 1;
+        } catch (Exception e) {
             e.printStackTrace();
             return 0;
         }
     }
+
     public static String compileAndRun(String dir) {
         String crCommand = "java " + dir;
         try {
@@ -181,15 +141,14 @@ class crRequest{
 
     }
 
-    //Returns 1 if successful, returning 0 if unsuccesful
-    public static int destroyListedFiles(List<String> filenames){
+    // Returns 1 if successful, returning 0 if unsuccesful
+    public static int destroyListedFiles(List<String> filenames) {
 
-        for(String filename: filenames){
+        for (String filename : filenames) {
             File file = new File(filename);
-            try{
+            try {
                 file.delete();
-            }
-            catch(Exception e){
+            } catch (Exception e) {
                 System.out.println("Errors Deleting Files");
                 return 0;
             }
@@ -197,5 +156,45 @@ class crRequest{
         return 1;
     }
 
-    
 }
+
+
+public class App {
+    
+    public static void main(String[] args) {
+        Gson gson=new Gson();// Initalize and create for conversions to json
+        var app = Javalin.create(/* config */)
+                .get("/", ctx -> ctx.result("Hello World"))
+                .post("/post_test/", ctx -> {
+                    // Initialize variables for process
+                    String output = "";
+
+                    Map<String, Object> outputDict = new HashMap<>();
+                    
+                    //I have no idea why but without this specific line of code before calling crRequest
+                    System.out.println("POST REQUEST RECEIVED " + ctx.uploadedFiles().size());
+
+                    crRequest compiler = new crRequest(ctx);
+
+                    // Test Response for Debugging in Terminal
+
+                    outputDict.put("Success",true);
+                    outputDict.put("Results",crRequest.compileAndRun(compiler.getIndexFilename()));
+
+                  
+                    //outputDict.put("output", compileAndRun(indexFile.filename()));
+                    //destroyListedFiles(filenames);
+
+                    String Response = "\n FILE(S) RECEIVED - CONTENTS DISPLAYED BELOW";
+                    
+
+                    ctx.result(gson.toJson(outputDict));
+                    // TEST COMMAND: curl -X POST -F "file1=@.\Test1.java" -F "file2=@.\Test2.java"
+                    // -F "file3=@.\Test3.java" http://localhost:7070/post_test/
+                    // curl -X POST -F "file1=@.\Test1.java" http://localhost:7070/post_test/
+                })
+                .start(7070);
+        System.out.println(new App());
+    }
+}
+

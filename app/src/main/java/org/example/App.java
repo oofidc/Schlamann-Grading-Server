@@ -56,6 +56,41 @@ class crRequest {
     public String getIndexFilename(){
         return indexFilename;
     }
+
+    public int saveFileWithContents(String filename, InputStream fileContents){
+        try {
+            File javaFile = new File(filename);
+            if (javaFile.createNewFile()) 
+            {//Creates new File and only runs rest of code if the file was succesfully created
+                System.out.println("File created: " + javaFile.getName());
+                javaFile.setWritable(true);
+                //if (javaFile.canWrite()) { //Check to make sure javaFile is writable(for the most part unnecesary)
+                    try { // Copies code to inputStream
+                        Files.copy(fileContents, javaFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        System.out.println("Content written to file: " + javaFile.getName());
+                        return 1;
+                    }
+                    catch (Exception e) {
+                        System.out.println("Generic Error Writing to Text File");
+                        return 0;
+                    }
+                //}
+            }
+        }
+        //Catch possible errors 
+        catch (IOException e) {
+            System.out.println("ERROR OCCURED IN WRITING/CREATING NEW FILE:");
+            e.printStackTrace();
+            return 0;
+        } catch (Exception e) {
+            System.out.println("ERROR OCCURED IN WRITING/CREATING NEW FILE(NON IOEXCEPTION ERROR):");
+            e.printStackTrace();
+            return 0;
+        }
+        return 0;
+
+    }
+
     // Returns 1 if successful, returning 0 if unsuccesful
     public int saveAttachedFile() {
         String fileContents = "";
@@ -72,34 +107,7 @@ class crRequest {
                 fileContents += "\n" + scanner.nextLine();
             }
             //Creates javaFile w/ same name as uploadedFile and
-            try {
-                File javaFile = new File(file.filename());
-                if (javaFile.createNewFile()) 
-                {//Creates new File and only runs rest of code if the file was succesfully created
-                    System.out.println("File created: " + javaFile.getName());
-                    javaFile.setWritable(true);
-                    //if (javaFile.canWrite()) { //Check to make sure javaFile is writable(for the most part unnecesary)
-                        try (InputStream inputStream = file.content()) { // Copies code to inputStream
-                            Files.copy(inputStream, javaFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                            System.out.println("Content written to file: " + javaFile.getName());
-                        }
-                        catch (Exception e) {
-                            System.out.println("Generic Error Writing to Text File");
-                            return 0;
-                        }
-                    //}
-                }
-            }
-            //Catch possible errors 
-            catch (IOException e) {
-                System.out.println("ERROR OCCURED IN WRITING/CREATING NEW FILE:");
-                e.printStackTrace();
-                return 0;
-            } catch (Exception e) {
-                System.out.println("ERROR OCCURED IN WRITING/CREATING NEW FILE(NON IOEXCEPTION ERROR):");
-                e.printStackTrace();
-                return 0;
-            }
+            saveFileWithContents(file.filename(), stream);
 
         }
         return 1;
@@ -112,7 +120,8 @@ class crRequest {
 
             // inputDict.put();
             inputDict = gson.fromJson(ctx.body(), Map.class);
-            System.out.println(inputDict);
+            inputDict.get("Code");
+            
 
             return 1;
         } catch (Exception e) {

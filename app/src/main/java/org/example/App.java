@@ -37,13 +37,13 @@ class crRequest {
     crRequest(Context ctx) {
         gson=new Gson();
         this.ctx = ctx;
-        if(ctx.body().contains("json")){
+        //if(ctx.body().contains("json")){
             saveFileFromJson(ctx);
-        }
+        /* }
         else{
             System.out.println("DEBUG -- I HAVE BEGUN SAVING THE ATTACHED FILE"); //DEBUG PRINT
             saveAttachedFile();
-        }
+        }*/
     }
 
       /*
@@ -91,8 +91,10 @@ class crRequest {
 
     }
 
+
     // Returns 1 if successful, returning 0 if unsuccesful
     public int saveAttachedFile() {
+        System.out.println("RUnning saveAttached File"); // debug
         String fileContents = "";
         //System.out.println("DEBUG -- OPEN METHOED " + ctx.uploadedFiles().size());
         indexFilename = ctx.uploadedFiles().get(0).filename();
@@ -113,22 +115,46 @@ class crRequest {
         return 1;
     }
 
-    public static int saveFileFromJson(Context ctx) {
+    public int saveFileFromJson(Context ctx) {
+        System.out.println("RUnning savefrom json"); // debug
         try {
             // System.out.println("\n\n\n BODY OF REQUEST: " + ctx.body()); //DEBUG PRINT
+            System.out.println("b4");
             Map<String, Object> inputDict = new HashMap<>();
 
-            // inputDict.put();
+            // inputDict.put()
+            
             inputDict = gson.fromJson(ctx.body(), Map.class);
-            inputDict.get("Code");
+            System.out.println("After");
+            String filename;
+            InputStream contents;
+            try{
+                contents = (InputStream)inputDict.get("Code");
+                
+                filename = (String)inputDict.get("Filename");
+                saveFileWithContents(filename, contents);
+
+                compileAndRun(filename + ".java");
+            }
+            catch(Exception e){
+                e.printStackTrace();
+                ctx.result("Bad Request: "  + e.getStackTrace());
+            }
+            
             
 
             return 1;
         } catch (Exception e) {
             e.printStackTrace();
+            ctx.result("Sever Error: "  + e.getStackTrace());
             return 0;
         }
+
     }
+
+    /*
+     * curl -X POST -H "Content-Type: appplication/json" -d '{"Filename":"testingJson","Code":"public class Test1 {public static void main(String[] args){for(int i = 0; i< 20; i++){System.out.println(1+2);}}}"} http://localhost:7070/post_test/'
+     */
 
     public static String compileAndRun(String dir) {
         String crCommand = "java " + dir;
